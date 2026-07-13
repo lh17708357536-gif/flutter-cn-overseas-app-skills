@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# 后端部署：rsync → uploads 双向 → npm/prisma/build → pm2 restart → 健康检查
+#
+# 用法：
+#   SSH_KEY=/path/to/prod_key ./scripts/deploy-backend.sh [--dry-run]
+
+set -euo pipefail
+
+SSH_KEY="${SSH_KEY:-<SSH_KEY_PATH>}"
+REMOTE_HOST="<REMOTE_USER>@<PROD_HOST>"
+REMOTE_PATH="<REMOTE_PROJECT_PATH>"
+LOCAL_PATH="<LOCAL_PROJECT_PATH>"
+PM2_APP_NAME="<PM2_APP_NAME>"
+PROD_DOMAIN="<PROD_DOMAIN>"
+
+DRY_RUN=""
+if [[ "${1:-}" == "--dry-run" ]]; then
+  DRY_RUN="-n --itemize-changes"
+  echo "[deploy] DRY RUN 模式"
+fi
+
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "❌ SSH 密钥不存在: $SSH_KEY"; exit 1
+fi
+chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+echo "[1/6] 上传 server/ 代码"
+rsync -avz $DRY_RUN -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
+  --exclude ".env" --exclude ".env.*" --exclude "*.backup-*" --exclude ".DS_Store" \
+  --exclude "node_modules/" --exclude "dist/" --exclude "coverage/" --exclude "logs/" \
+  --exclude "uploads/" --exclude "keys/" --exclude "scripts/rembg-env/" \
+  --exclude "prisma/dev.db" --exclude "prisma/test.db" --exclude "prisma/prisma/" \
+  "$LOCAL_PATH/" "$REMOTE_HOST:$REMOTE_PATH/"
+
+if [[ -n "$DRY_RUN" ]]; then
+  echo "DRY RUN 结束"; exit 0
+fi
+
+echo "[2/6] uploads 双向补齐"
+rsync -avz --ignore-existing -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
+  "$REMOTE_HOST:$REMOTE_PATH/uploads/" "$LOCAL_PATH/uploads/" || true
+rsync -avz --ignore-existing -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
+  "$LOCAL_PATH/uploads/" "$REMOTE_HOST:$REMOTE_PATH/uploads/" || true
+
+echo "[3/6] 远程构建 + 重启"
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$REMOTE_HOST" bash -s <<REMOTE_SCRIPT
+set -e
+cd $REMOTE_PATH
+npm install --no-audit --no-fund || true
+npx prisma db push --accept-data-loss || true
+npx prisma generate
+npm run build
+pm2 restart $PM2_APP_NAME --update-env
+sleep 8
+pm2 logs $PM2_APP_NAME --lines 60 --nostream
+REMOTE_SCRIPT
+
+echo "[4/6] 内网健康检查"
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$REMOTE_HOST" \
+  "curl -sI http://127.0.0.1:3000/admin/login | head -3"
+
+echo "[5/6] 外网健康检查"
+curl -sI https://$PROD_DOMAIN/admin/login | head -3 || true
+
+echo "[6/6] ✅ 部署完成"

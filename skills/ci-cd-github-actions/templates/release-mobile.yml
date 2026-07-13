@@ -1,0 +1,90 @@
+# .github/workflows/release-mobile.yml — 三 flavor 矩阵构建 + 产物守卫
+# 触发：打 tag v* 或手动 dispatch。iOS 用 macOS runner（贵，勿挂 PR）。
+name: Release Mobile
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      flavors:
+        description: '构建哪些 flavor（逗号分隔：cn_android,overseas_android,ios）'
+        default: 'cn_android,overseas_android,ios'
+
+jobs:
+  android:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flavor: cn_android
+            build: flutter build apk --flavor cn --release --dart-define=BUILD_FLAVOR=cn_android
+            artifact: build/app/outputs/flutter-apk/app-cn-release.apk
+            guard: scripts/check_cn_no_google.sh
+          - flavor: overseas_android
+            build: flutter build appbundle --flavor overseas --release --dart-define=BUILD_FLAVOR=overseas_android
+            artifact: build/app/outputs/bundle/overseasRelease/app-overseas-release.aab
+            guard: scripts/check_overseas_no_jpush.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '<FLUTTER_VERSION>', channel: stable, cache: true }
+      - name: 校验 changelog 三件套
+        run: |
+          V=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          test -f docs/changelog/android/$V.md || { echo "❌ 缺 docs/changelog/android/$V.md"; exit 1; }
+          grep -q "$V" docs/changelog/CHANGELOG.md || { echo "❌ CHANGELOG.md 未登记 $V"; exit 1; }
+      - name: 还原 keystore + key.properties
+        run: |
+          mkdir -p android/app/keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore/release.jks
+          cat > android/key.properties <<EOF
+          storeFile=keystore/release.jks
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          jpushAppKey=${{ secrets.JPUSH_APP_KEY }}
+          jpushChannel=default
+          EOF
+      - name: overseas 还原 google-services.json
+        if: matrix.flavor == 'overseas_android'
+        run: |
+          mkdir -p android/app/src/overseas
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/src/overseas/google-services.json
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - name: 构建 ${{ matrix.flavor }}
+        run: ${{ matrix.build }} --dart-define=API_BASE_URL=${{ secrets.PROD_API_URL }}
+      - name: 产物守卫（cn 无 Google / overseas 无 JPush）
+        run: bash ${{ matrix.guard }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.flavor }}
+          path: ${{ matrix.artifact }}
+
+  ios:
+    if: contains(github.event.inputs.flavors, 'ios') || startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '<FLUTTER_VERSION>', channel: stable, cache: true }
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '3.2', bundler-cache: true, working-directory: ios }
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - name: Flutter 侧构建（不签名）
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=BUILD_FLAVOR=ios \
+            --dart-define=API_BASE_URL=${{ secrets.PROD_API_URL }}
+      - name: fastlane match + archive + TestFlight
+        working-directory: ios
+        run: bundle exec fastlane beta
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_TOKEN }}
+          APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.ASC_API_KEY_P8 }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  最小 Privacy Manifest 模板（仅用 IDFV、不跟踪、不收集任何敏感数据）。
+  放到 ios/Runner/PrivacyInfo.xcprivacy，并在 Xcode 中将文件加入 Runner target 的
+  Copy Bundle Resources。
+
+  Required Reason API 速查（最常见 4 类）：
+  | Category | 触发场景 | 常见 reason code |
+  | NSPrivacyAccessedAPICategoryFileTimestamp | 读 / 写文件 mtime（path_provider、缓存、下载）| C617.1 |
+  | NSPrivacyAccessedAPICategoryUserDefaults | shared_preferences / NSUserDefaults | CA92.1 |
+  | NSPrivacyAccessedAPICategorySystemBootTime | uptime 计算 / device_info_plus | 35F9.1 |
+  | NSPrivacyAccessedAPICategoryDiskSpace | 检查磁盘空间 | 85F4.1 |
+-->
+<plist version="1.0">
+<dict>
+  <key>NSPrivacyTracking</key>
+  <false/>
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array>
+    <!-- 按实际收集填，常见：邮箱 / 用户名 / 设备 ID（IDFV） -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeDeviceID</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+  </array>
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <!-- 用了 file timestamp（如 path_provider / 文件读取属性） -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>C617.1</string>
+      </array>
+    </dict>
+    <!-- 用了 UserDefaults（shared_preferences） -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+    <!-- 用了 systemBootTime（device_info_plus / package_info_plus 部分版本会调） -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>35F9.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

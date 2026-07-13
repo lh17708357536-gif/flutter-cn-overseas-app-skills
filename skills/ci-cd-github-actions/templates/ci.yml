@@ -1,0 +1,81 @@
+# .github/workflows/ci.yml — PR 质量门禁（前后端 + 多区域静态守卫）
+# 落地：cp 到 <repo>/.github/workflows/ci.yml，替换 <FLUTTER_VERSION> / <NODE_VERSION> / <APP>
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: ['release/**']
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '<FLUTTER_VERSION>'   # 锁死，勿用 latest
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter gen-l10n
+      - run: dart format --set-exit-if-changed lib/ test/
+      - run: flutter analyze --fatal-infos
+      - run: flutter test --coverage --exclude-tags golden
+      - name: golden（环境敏感，单独跑）
+        run: flutter test --tags golden || echo "::warning::golden 失败，检查是否字体环境差异"
+
+  backend-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: <APP>_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ptest"
+          --health-interval=5s --health-timeout=5s --health-retries=15
+    env:
+      DATABASE_URL: 'mysql://root:test@127.0.0.1:3306/<APP>_test'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '<NODE_VERSION>'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate reset --force --skip-seed
+      - run: npm run test
+      - run: npm run test:e2e
+
+  static-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 顶层平台 import 守卫（防 flavor 串味）
+        run: bash scripts/check_no_toplevel_platform_import.sh
+      - name: ARB 多语言 key 对齐
+        run: bash scripts/check_arb_alignment.sh
+      - name: 扣费 action 三方同步
+        run: bash scripts/check_credit_action_keys.sh
+      - name: Google CDN 直连残留
+        run: |
+          ! grep -rnE "fonts\.googleapis\.com|generativelanguage\.googleapis\.com" lib/ server/src/ \
+            || { echo "❌ 发现 Google CDN 直连残留（应走 loli.net / 新加坡中转）"; exit 1; }
+      - name: 仓库不得含硬编码密钥
+        run: |
+          ! grep -rnE "BEGIN (RSA|OPENSSL|PRIVATE) KEY|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}" \
+            --include='*.dart' --include='*.ts' --include='*.yaml' . \
+            || { echo "❌ 疑似硬编码密钥"; exit 1; }

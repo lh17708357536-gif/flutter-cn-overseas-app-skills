@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# iOS TestFlight build — 在项目根 scripts/ 下使用
+#
+# 用法：
+#   ./scripts/build_ios_testflight.sh \
+#     --build-name 1.0.2 \
+#     --build-number 22 \
+#     --api-base-url https://your-backend.com
+
+set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
+API_BASE_URL="${API_BASE_URL:-<PROD_API_URL>}"
+BUILD_FLAVOR="${BUILD_FLAVOR:-ios}"
+BUILD_NAME="${BUILD_NAME:-}"      # x.y.z
+BUILD_NUMBER="${BUILD_NUMBER:-}"  # n
+CLEAN_BEFORE_BUILD="${CLEAN_BEFORE_BUILD:-0}"
+RESET_RELEASE_OUTPUTS="${RESET_RELEASE_OUTPUTS:-1}"
+EXTRA_ARGS=()
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./scripts/build_ios_testflight.sh [options]
+Options:
+  --build-name <x.y.z>    覆盖 pubspec versionName
+  --build-number <n>      覆盖 pubspec buildNumber
+  --api-base-url <url>    生产后端 URL（默认从 env 读）
+  --no-codesign           本地校验用，不签名
+  --clean                 先 flutter clean
+  --keep-release-cache    保留 build/ipa 缓存（默认每次清理）
+  -h, --help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --build-name)    BUILD_NAME="$2"; shift 2 ;;
+    --build-number)  BUILD_NUMBER="$2"; shift 2 ;;
+    --api-base-url)  API_BASE_URL="$2"; shift 2 ;;
+    --no-codesign)   EXTRA_ARGS+=("--no-codesign"); shift ;;
+    --clean)         CLEAN_BEFORE_BUILD=1; shift ;;
+    --keep-release-cache) RESET_RELEASE_OUTPUTS=0; shift ;;
+    -h|--help)       usage; exit 0 ;;
+    *)               EXTRA_ARGS+=("$1"); shift ;;
+  esac
+done
+
+echo "==> iOS TestFlight build"
+echo "    API_BASE_URL=$API_BASE_URL"
+echo "    BUILD_FLAVOR=$BUILD_FLAVOR"
+[[ -n "$BUILD_NAME"   ]] && echo "    BUILD_NAME=$BUILD_NAME"
+[[ -n "$BUILD_NUMBER" ]] && echo "    BUILD_NUMBER=$BUILD_NUMBER"
+
+[[ "$CLEAN_BEFORE_BUILD" == "1" ]] && flutter clean
+
+if [[ "$RESET_RELEASE_OUTPUTS" == "1" ]]; then
+  # native_assets 缓存复用旧的 simulator framework 会让 Transporter 拒签
+  rm -rf "$ROOT_DIR/build/native_assets/ios" \
+         "$ROOT_DIR/build/ios/archive" \
+         "$ROOT_DIR/build/ios/ipa" \
+         "$ROOT_DIR/.dart_tool/flutter_build"
+fi
+
+flutter pub get
+
+flutter build ipa --release \
+  --dart-define=BUILD_FLAVOR="$BUILD_FLAVOR" \
+  --dart-define=API_BASE_URL="$API_BASE_URL" \
+  ${BUILD_NAME:+--build-name="$BUILD_NAME"} \
+  ${BUILD_NUMBER:+--build-number="$BUILD_NUMBER"} \
+  "${EXTRA_ARGS[@]}"
+
+echo "==> Build finished"
+echo "    IPA: $ROOT_DIR/build/ios/ipa"
+echo "    Archive: $ROOT_DIR/build/ios/archive/Runner.xcarchive"
