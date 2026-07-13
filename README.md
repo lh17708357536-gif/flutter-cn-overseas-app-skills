@@ -90,6 +90,11 @@ cp -R skills/* ~/.claude/skills/
 
 ---
 
+## 联系 / Contact
+
+- 问题 / 建议 / 合作：**lh17708357536@gmail.com**
+- 也欢迎直接开 [issue](../../issues) 或提 PR。
+
 ## License
 
 [MIT](LICENSE) © 2026 haoliu
