@@ -100,7 +100,7 @@ flutter run --flavor cn       --dart-define=BUILD_FLAVOR=cn_android
 flutter run --flavor overseas --dart-define=BUILD_FLAVOR=overseas_android
 flutter run                   --dart-define=BUILD_FLAVOR=ios
 ```
-> 已实测：后端 `/health` 返回 200、前端 `flutter analyze` 零 error、cn/overseas flavor 构建任务生成。详见 `examples/starter/README.md`。
+> 已实测：后端 `/health` 返回 200、前端 `flutter analyze` 零 issue + `flutter test` 通过、cn/overseas flavor 已在 `build.gradle.kts` 声明。（未跑完整 APK 构建，那是你的一步。）详见 `examples/starter/README.md`。
 
 ## 设计原则
 
