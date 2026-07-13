@@ -1,5 +1,7 @@
 # Flutter 中国 + 海外 多平台 App 开发 · Agent Skills
 
+**简体中文 | [English](README.en.md)**
+
 > **一套给 AI 编码助手（Claude Code / Codex / Cursor 等）用的工程规范包**，把"中国市场 + 海外市场、iOS + Android、Flutter 前端 + NestJS 后端"三flavor 全区发布的真实踩坑经验，蒸馏成可被 agent 自动加载的 Skill。
 >
 > A set of **agent-loadable engineering skills** for building & shipping a Flutter + NestJS app to **both China and overseas markets** (iOS + Android), with three build flavors, distilled from real production experience.
@@ -19,17 +21,17 @@
 - **登录**：Apple / Google / 微信 / QQ 第三方登录 + 服务端验签 + 账号打通 + App Store 4.8 合规
 - **支付**：微信支付 / 支付宝（fluwx/tobias）/ Apple IAP（JWS 验签）/ Google Play Billing
 - **推送**：极光 JPush（国内）/ FCM（海外）/ APNs（iOS）
-- **存储**：阿里云 OSS（UploadService 抽象，可切）
+- **存储**：阿里云 OSS / 腾讯云 COS / AWS S3（UploadService 统一抽象，env 切换零改码）
+- **地图定位**：高德（国内）/ Google Maps / Mapbox 按国家路由 + GCJ-02 坐标 + 定位权限合规
 - **合规**：ICP 备案名双 label / 隐式标识技术说明文档 / Privacy Manifest / GDPR·CCPA
 - **测试**：单元 / widget / golden / ★flavor 条件编译测试 / 多租户隔离 / 扣费退款
 - **CI/CD**：GitHub Actions 三 flavor 矩阵构建 + iOS 签名（fastlane match）+ 产物守卫 + 部署流水线
 - **可观测性**：flavor 感知崩溃采集（Sentry）+ 结构化日志 + 健康告警 + PII 脱敏
 - **部署**：rsync + PM2 + Nginx 生产 SOP（ask-before-write / dry-run / uploads 双向补齐）
+- **可跑 starter**：`examples/starter/`——三 flavor Flutter 骨架 + NestJS `/health` 后端（已实测 `flutter analyze` / 后端 `/health` 通过）
 
 ### ❌ 暂未覆盖（Roadmap，欢迎 PR）
 - 华为原生 HMS Push（当前走 JPush 厂商通道）
-- 腾讯云 COS / AWS S3 的具体实现（仅有 UploadService 抽象层）
-- 地图：高德 / Google Maps / Mapbox（按 country 路由——已在参考项目中实践，尚未抽成 skill）
 - 海外订阅：Stripe / RevenueCat
 - Flutter Web / Desktop 目标
 - 微信原生分享（fluwx 支持，尚未单独成文）
@@ -38,7 +40,7 @@
 
 ---
 
-## Skill 索引（13 个）
+## Skill 索引（15 个）
 
 从 **`flutter-multi-region-dev`** 进入——它是路由器，会按你的上架范围告诉 agent 加载哪些子 skill。
 
@@ -53,6 +55,8 @@
 | `ios-app-store` | iOS App Store（TestFlight / Privacy Manifest / IAP JWS / APNs / train-closed）|
 | `overseas-android-google-play` | 海外 Android（Firebase / Play Billing / GDPR / ProGuard）|
 | `social-login` | 第三方登录（Apple / Google / 微信 / QQ + 服务端验签 + 账号打通 + 4.8 合规）|
+| `maps-location` | 地图与定位（高德 / Google Maps / Mapbox 按国家路由 + GCJ-02 坐标 + 定位权限合规）|
+| `object-storage` | 对象存储（阿里云 OSS / 腾讯云 COS / AWS S3 统一抽象 + STS 直传 + 签名 URL）|
 | `flutter-testing` | 测试规范（Notifier/widget/golden + ★flavor 条件编译测试 + 多租户隔离）|
 | `ci-cd-github-actions` | CI/CD（PR 门禁 + ★三 flavor 矩阵 + iOS 签名 + 产物守卫 + 部署）|
 | `observability` | 可观测性（崩溃采集 + 结构化日志 + 健康告警 + PII 脱敏）|
@@ -80,6 +84,23 @@ cp -R skills/* ~/.claude/skills/
 > **路径映射注意**：skill 正文里的 `~/.claude/skills/X` 引用，等价于本仓库的 `skills/X`。Claude Code 用户 `cp` 到 `~/.claude/skills/` 后原样解析；其他 agent 按此映射理解即可（`AGENTS.md` 有说明）。
 
 ---
+
+## 可跑示例（examples/starter）
+
+不想只看规范？`examples/starter/` 是一个**最小可跑骨架**，演示三 flavor 架构 + 后端 `/health`（推送用 stub，**无需任何密钥即可编译运行**）：
+
+```bash
+# 后端（NestJS，端口 3007）
+cd examples/starter/server && npm install && npm run build && npm run start
+curl http://127.0.0.1:3007/api/v1/health          # {"status":"ok",...}
+
+# 前端（三 flavor 任选其一）
+cd examples/starter/app && flutter pub get
+flutter run --flavor cn       --dart-define=BUILD_FLAVOR=cn_android
+flutter run --flavor overseas --dart-define=BUILD_FLAVOR=overseas_android
+flutter run                   --dart-define=BUILD_FLAVOR=ios
+```
+> 已实测：后端 `/health` 返回 200、前端 `flutter analyze` 零 error、cn/overseas flavor 构建任务生成。详见 `examples/starter/README.md`。
 
 ## 设计原则
 

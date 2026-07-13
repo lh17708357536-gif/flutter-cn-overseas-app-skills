@@ -43,6 +43,8 @@ description: Flutter 全区开发总入口路由器 — 启动新的多市场（
 | `ios-app-store` | iOS App Store（TestFlight / IDFV / Privacy Manifest / IAP 服务端验证）|
 | `overseas-android-google-play` | 海外 Android（Firebase / Play Billing / GDPR / ProGuard）|
 | `social-login` | 第三方登录（Apple / Google / 微信 / QQ）flavor 感知 + 服务端验签 + 账号打通 + App Store 4.8 合规 |
+| `maps-location` | 地图与定位（高德/Google/Mapbox 按国家路由 + GCJ-02 坐标 + 定位权限合规）|
+| `object-storage` | 对象存储（阿里云 OSS / 腾讯云 COS / AWS S3 统一抽象，env 切换零改码）|
 | `flutter-testing` | 测试规范（Notifier/widget/golden + ★flavor 条件编译测试 + 多租户隔离 + 扣费退款）|
 | `ci-cd-github-actions` | CI/CD（PR 门禁 + ★三 flavor 矩阵构建 + iOS 签名 + 产物守卫 + 部署流水线）|
 | `observability` | 可观测性（flavor 感知崩溃采集 + 结构化日志 + 健康告警 + PII 脱敏）|

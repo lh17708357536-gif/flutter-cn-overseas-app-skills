@@ -1,0 +1,30 @@
+name: starter_app
+description: "三 Flavor（中国 / 海外 / iOS）架构最小演示 starter。"
+# 私有示例包，禁止误发布到 pub.dev
+publish_to: 'none'
+
+# 版本号：versionName+buildNumber
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+# 依赖：只保留演示架构所需的最小集，禁止引入任何平台 SDK（JPush / Firebase 等）
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 状态管理
+  flutter_riverpod: ^2.5.0
+  # 网络请求
+  dio: ^5.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # 推荐 lint 规则集
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      中国大陆（cn）Flavor 专属 Manifest 占位。
+      真实项目在此声明 JPush 的 AppKey、Channel 等 meta-data 与推送权限；
+      具体接入见 skills/cn-android-flavor。此处留空占位，starter 不接真实 SDK。
+    -->
+</manifest>

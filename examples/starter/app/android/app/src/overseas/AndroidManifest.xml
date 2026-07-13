@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      海外（overseas）Flavor 专属 Manifest 占位。
+      真实项目在此声明 FCM 相关 meta-data / service，并放置 google-services.json；
+      具体接入见 skills/overseas-android-google-play。此处留空占位，starter 不接真实 SDK。
+      ★ 铁律：overseas 包禁止含 JPush / 微信 / 支付宝 SDK。
+    -->
+</manifest>

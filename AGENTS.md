@@ -26,6 +26,8 @@
 | 上架 iOS（TestFlight/IAP/隐私） | `ios-app-store` |
 | 打海外 Android 包（FCM/Play Billing） | `overseas-android-google-play` |
 | 接第三方登录（Apple/Google/微信/QQ） | `social-login` |
+| 接地图/定位（高德/Google/Mapbox） | `maps-location` |
+| 接对象存储（OSS/COS/S3） | `object-storage` |
 | 写测试 / 防 flavor 串味 | `flutter-testing` |
 | 配 CI/CD / 三 flavor 矩阵构建 | `ci-cd-github-actions` |
 | 接崩溃采集 / 日志 / 监控告警 | `observability` |
